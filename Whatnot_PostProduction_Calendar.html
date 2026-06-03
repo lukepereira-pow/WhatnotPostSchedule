@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whatnot Post-Production Calendar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f5f5f5; color: #222; }
+
+  header {
+    background: #fff;
+    border-bottom: 3px solid #0A9E8A;
+    padding: 18px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header span { font-size: 14px; color: #888; }
+
+  .controls {
+    background: #fff;
+    padding: 20px 32px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .controls label { font-size: 13px; font-weight: 700; color: #555; margin-right: 6px; }
+  .controls input[type="date"] {
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+  }
+  .tier-btns { display: flex; gap: 8px; }
+  .tier-btn {
+    padding: 7px 18px;
+    border-radius: 20px;
+    border: 2px solid #ccc;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: Arial, sans-serif;
+  }
+  .tier-btn.minimal  { border-color: #C0392B; color: #C0392B; }
+  .tier-btn.moderate { border-color: #D4870A; color: #D4870A; }
+  .tier-btn.complex  { border-color: #27AE60; color: #27AE60; }
+  .tier-btn.minimal.active  { background: #C0392B; color: #fff; }
+  .tier-btn.moderate.active { background: #D4870A; color: #fff; }
+  .tier-btn.complex.active  { background: #27AE60; color: #fff; }
+
+  .main { padding: 28px 32px; }
+
+  .timeline-wrap { background: #fff; border-radius: 10px; padding: 28px; margin-bottom: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .timeline-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 18px; }
+  .timeline { display: flex; align-items: flex-start; gap: 0; position: relative; overflow-x: auto; padding-bottom: 8px; }
+  .milestone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 110px;
+    flex: 1;
+    position: relative;
+  }
+  .milestone:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 55%;
+    width: 100%;
+    height: 2px;
+    background: #e0e0e0;
+    z-index: 0;
+  }
+  .milestone.active:not(:last-child)::after { background: var(--tier-color); }
+  .dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    position: relative; z-index: 1;
+    color: #aaa;
+  }
+  .milestone.active .dot {
+    background: var(--tier-color);
+    border-color: var(--tier-color);
+    color: #fff;
+  }
+  .ms-label {
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 8px;
+    text-align: center;
+    color: #555;
+    line-height: 1.3;
+  }
+  .ms-date {
+    font-size: 11px;
+    color: #888;
+    margin-top: 3px;
+    text-align: center;
+  }
+  .milestone.active .ms-label { color: var(--tier-color); }
+
+  .cal-wrap { background: #fff; border-radius: 10px; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .cal-header h2 { font-size: 16px; font-weight: 700; }
+  .cal-nav { display: flex; gap: 8px; }
+  .cal-nav button {
+    background: none; border: 1.5px solid #ddd; border-radius: 6px;
+    padding: 4px 12px; cursor: pointer; font-size: 16px; color: #555;
+  }
+  .cal-nav button:hover { background: #f0f0f0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .day-name {
+    text-align: center; font-size: 11px; font-weight: 700;
+    color: #888; padding: 6px 0; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .day {
+    min-height: 72px;
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 12px;
+    position: relative;
+    background: #fafafa;
+    border: 1px solid #eee;
+  }
+  .day.other-month { background: #f5f5f5; }
+  .day.other-month .day-num { color: #ccc; }
+  .day.weekend { background: #f9f9f9; }
+  .day-num { font-size: 12px; font-weight: 600; color: #444; margin-bottom: 2px; }
+  .day.today { border-color: #0A9E8A; }
+  .day.today .day-num { color: #0A9E8A; }
+  .event {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-top: 2px;
+    color: #fff;
+    line-height: 1.3;
+  }
+
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .summary-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 28px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .summary-item { font-size: 13px; }
+  .summary-item span { font-weight: 700; }
+
+  .tier-badge {
+    display: inline-block;
+    padding: 3px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: 10px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Whatnot Post-Production Calendar</h1>
+  <span>Video Creation Framework — Editorial Tiers</span>
+</header>
+
+<div class="controls">
+  <div>
+    <label for="kickoff">Kickoff Date</label>
+    <input type="date" id="kickoff">
+  </div>
+  <div>
+    <label>Tier</label>
+    <div class="tier-btns">
+      <button class="tier-btn minimal active" onclick="setTier('minimal')">⚡ Minimal</button>
+      <button class="tier-btn moderate" onclick="setTier('moderate')">🎬 Moderate</button>
+      <button class="tier-btn complex" onclick="setTier('complex')">🎥 Complex</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="timeline-wrap">
+    <div class="timeline-title">Milestone Timeline</div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="cal-wrap">
+    <div class="cal-header">
+      <h2 id="cal-month-label"></h2>
+      <div class="cal-nav">
+        <button onclick="prevMonth()">&#8592;</button>
+        <button onclick="nextMonth()">&#8594;</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="summary-box" id="summary"></div>
+</div>
+
+<script>
+const TIERS = {
+  minimal: {
+    label: 'Minimal',
+    emoji: '⚡',
+    color: '#C0392B',
+    milestones: [
+      { label: 'Kickoff\nBrief locked', bd: 0 },
+      { label: 'First cut\ndelivered', bd: 3 },
+      { label: 'Feedback R1\n(12–24 hrs)', bd: 4 },
+      { label: 'Revisions\ncomplete', bd: 5 },
+      { label: 'Final approval\nEOD (R2)', bd: 6 },
+      { label: 'Delivery', bd: 7 },
+    ]
+  },
+  moderate: {
+    label: 'Moderate',
+    emoji: '🎬',
+    color: '#D4870A',
+    milestones: [
+      { label: 'Kickoff\nBrief locked', bd: 0 },
+      { label: 'First cut\ndelivered', bd: 4 },
+      { label: 'Motion Graphics\nAssets Due', bd: 5 },
+      { label: 'Feedback R1\n(48–72 hrs)', bd: 6 },
+      { label: 'Revised cut', bd: 8 },
+      { label: 'Feedback R2\n(48 hrs)', bd: 9 },
+      { label: 'Revised cut', bd: 10 },
+      { label: 'Feedback R3\nFinal approval', bd: 11 },
+      { label: 'Delivery', bd: 12 },
+    ]
+  },
+  complex: {
+    label: 'Complex',
+    emoji: '🎥',
+    color: '#27AE60',
+    milestones: [
+      { label: 'Kickoff\nBrief locked', bd: 0 },
+      { label: 'Rough cut', bd: 7 },
+      { label: 'Motion Graphics\nAssets Due', bd: 9 },
+      { label: 'Feedback R1\n(3–5 days)', bd: 12 },
+      { label: 'Revised cut', bd: 15 },
+      { label: 'Feedback R2\n(3–5 days)', bd: 17 },
+      { label: 'Revised cut', bd: 20 },
+      { label: 'Feedback R3\n(3–5 days)', bd: 22 },
+      { label: 'Revised cut', bd: 24 },
+      { label: 'Feedback R4\n(3–5 days)', bd: 26 },
+      { label: 'Final cut', bd: 27 },
+      { label: 'Final approval', bd: 29 },
+      { label: 'Delivery', bd: 30 },
+    ]
+  }
+};
+
+let currentTier = 'minimal';
+let viewYear, viewMonth;
+let kickoffDate;
+
+function setTier(tier) {
+  currentTier = tier;
+  document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tier-btn.' + tier).classList.add('active');
+  render();
+}
+
+function addBusinessDays(date, n) {
+  let d = new Date(date);
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+  }
+  return d;
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function toYMD(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function render() {
+  const tier = TIERS[currentTier];
+  document.documentElement.style.setProperty('--tier-color', tier.color);
+
+  const milestones = tier.milestones.map(m => ({
+    ...m,
+    date: m.bd === 0 ? new Date(kickoffDate) : addBusinessDays(kickoffDate, m.bd)
+  }));
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = milestones.map((m, i) => `
+    <div class="milestone active">
+      <div class="dot">${i+1}</div>
+      <div class="ms-label">${m.label.replace(/\n/g,'<br>')}</div>
+      <div class="ms-date">${fmtDate(m.date)}</div>
+    </div>
+  `).join('');
+
+  const eventMap = {};
+  milestones.forEach((m) => {
+    const key = toYMD(m.date);
+    if (!eventMap[key]) eventMap[key] = [];
+    eventMap[key].push({ label: m.label.split('\n')[0], color: tier.color });
+  });
+
+  renderCal(eventMap, tier);
+
+  const last = milestones[milestones.length - 1];
+  const totalBD = tier.milestones[tier.milestones.length - 1].bd;
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-item">Tier <span class="tier-badge" style="background:${tier.color}">${tier.emoji} ${tier.label}</span></div>
+    <div class="summary-item">Kickoff <span>${fmtDate(kickoffDate)}</span></div>
+    <div class="summary-item">Delivery <span>${fmtDate(last.date)}</span></div>
+    <div class="summary-item">Total business days <span>${totalBD}</span></div>
+    <div class="summary-item">Feedback rounds <span>${currentTier === 'minimal' ? 2 : currentTier === 'moderate' ? 3 : 5}</span></div>
+  `;
+}
+
+function renderCal(eventMap, tier) {
+  const label = document.getElementById('cal-month-label');
+  const grid = document.getElementById('cal-grid');
+
+  const monthName = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  label.innerHTML = monthName + ` <span class="tier-badge" style="background:${tier.color};font-size:11px">${tier.emoji} ${tier.label}</span>`;
+
+  const today = new Date();
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const startDow = firstDay.getDay();
+
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = days.map(d => `<div class="day-name">${d}</div>`).join('');
+
+  for (let i = 0; i < startDow; i++) {
+    const d = new Date(viewYear, viewMonth, -startDow + i + 1);
+    html += `<div class="day other-month"><div class="day-num">${d.getDate()}</div></div>`;
+  }
+
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const date = new Date(viewYear, viewMonth, d);
+    const key = toYMD(date);
+    const isToday = toYMD(date) === toYMD(today);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const events = eventMap[key] || [];
+    const cls = ['day', isToday ? 'today' : '', isWeekend ? 'weekend' : ''].filter(Boolean).join(' ');
+    html += `<div class="${cls}">
+      <div class="day-num">${d}</div>
+      ${events.map(e => `<div class="event" style="background:${e.color}">${e.label}</div>`).join('')}
+    </div>`;
+  }
+
+  const remaining = (7 - ((startDow + lastDay.getDate()) % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="day other-month"><div class="day-num">${i}</div></div>`;
+  }
+
+  grid.innerHTML = html;
+
+  document.getElementById('legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:${tier.color}"></div> Milestone</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0A9E8A"></div> Today</div>
+  `;
+}
+
+function buildEventMap() {
+  const tier = TIERS[currentTier];
+  const milestones = tier.milestones.map(m => ({
+    date: m.bd === 0 ? new Date(kickoffDate) : addBusinessDays(kickoffDate, m.bd),
+    label: m.label
+  }));
+  const eventMap = {};
+  milestones.forEach(m => {
+    const key = toYMD(m.date);
+    if (!eventMap[key]) eventMap[key] = [];
+    eventMap[key].push({ label: m.label.split('\n')[0], color: tier.color });
+  });
+  return eventMap;
+}
+
+function prevMonth() {
+  viewMonth--;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  renderCal(buildEventMap(), TIERS[currentTier]);
+}
+
+function nextMonth() {
+  viewMonth++;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderCal(buildEventMap(), TIERS[currentTier]);
+}
+
+const today = new Date();
+kickoffDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+while (kickoffDate.getDay() === 0 || kickoffDate.getDay() === 6) {
+  kickoffDate.setDate(kickoffDate.getDate() + 1);
+}
+viewYear = kickoffDate.getFullYear();
+viewMonth = kickoffDate.getMonth();
+
+const kickoffInput = document.getElementById('kickoff');
+kickoffInput.value = toYMD(kickoffDate);
+kickoffInput.addEventListener('change', e => {
+  const parts = e.target.value.split('-');
+  kickoffDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  viewYear = kickoffDate.getFullYear();
+  viewMonth = kickoffDate.getMonth();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
