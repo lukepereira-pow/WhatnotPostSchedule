@@ -139,6 +139,14 @@
   .day-num { font-size: 12px; font-weight: 600; color: #444; margin-bottom: 2px; }
   .day.today { border-color: #0A9E8A; }
   .day.today .day-num { color: #0A9E8A; }
+  .day.holiday { background: #FFF8F0; }
+  .holiday-label {
+    font-size: 9px;
+    color: #B07020;
+    font-weight: 600;
+    margin-top: 2px;
+    line-height: 1.2;
+  }
   .event {
     font-size: 10px;
     font-weight: 700;
@@ -273,6 +281,67 @@ const TIERS = {
   }
 };
 
+// Whatnot holidays & company breaks — skipped by business day calculator
+const HOLIDAYS = new Set([
+  // 2026
+  '2026-01-01', // New Year's Day
+  '2026-01-02', // '25-'26 Winter Break (Whatnot)
+  '2026-01-19', // MLK Jr. Day
+  '2026-02-16', // President's Day
+  '2026-05-25', // Memorial Day
+  '2026-06-19', // Juneteenth
+  '2026-06-29', // Summer Break (Whatnot)
+  '2026-06-30',
+  '2026-07-01',
+  '2026-07-02',
+  '2026-07-03',
+  '2026-07-04', // July 4th (Sat — included for safety)
+  '2026-09-07', // Labor Day
+  '2026-11-26', // Thanksgiving
+  '2026-11-27',
+  '2026-12-23', // Winter Break (Whatnot)
+  '2026-12-24',
+  '2026-12-25', // Christmas
+  '2026-12-26',
+  '2026-12-28',
+  '2026-12-29',
+  '2026-12-30',
+  '2026-12-31',
+  // 2027
+  '2027-01-01', // New Year's Day
+]);
+
+const HOLIDAY_LABELS = {
+  '2026-01-01': "New Year's Day",
+  '2026-01-02': 'Winter Break',
+  '2026-01-19': 'MLK Jr. Day',
+  '2026-02-16': "President's Day",
+  '2026-05-25': 'Memorial Day',
+  '2026-06-19': 'Juneteenth',
+  '2026-06-29': 'Summer Break',
+  '2026-06-30': 'Summer Break',
+  '2026-07-01': 'Summer Break',
+  '2026-07-02': 'Summer Break',
+  '2026-07-03': 'Summer Break',
+  '2026-07-04': 'July 4th',
+  '2026-09-07': 'Labor Day',
+  '2026-11-26': 'Thanksgiving',
+  '2026-11-27': 'Thanksgiving',
+  '2026-12-23': 'Winter Break',
+  '2026-12-24': 'Winter Break',
+  '2026-12-25': 'Christmas',
+  '2026-12-26': 'Winter Break',
+  '2026-12-28': 'Winter Break',
+  '2026-12-29': 'Winter Break',
+  '2026-12-30': 'Winter Break',
+  '2026-12-31': 'Winter Break',
+  '2027-01-01': "New Year's Day",
+};
+
+function isHoliday(d) {
+  return HOLIDAYS.has(toYMD(d));
+}
+
 let currentTier = 'minimal';
 let viewYear, viewMonth;
 let kickoffDate;
@@ -289,7 +358,7 @@ function addBusinessDays(date, n) {
   let added = 0;
   while (added < n) {
     d.setDate(d.getDate() + 1);
-    if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+    if (d.getDay() !== 0 && d.getDay() !== 6 && !isHoliday(d)) added++;
   }
   return d;
 }
@@ -365,10 +434,12 @@ function renderCal(eventMap, tier) {
     const key = toYMD(date);
     const isToday = toYMD(date) === toYMD(today);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const holiday = HOLIDAY_LABELS[key] || null;
     const events = eventMap[key] || [];
-    const cls = ['day', isToday ? 'today' : '', isWeekend ? 'weekend' : ''].filter(Boolean).join(' ');
+    const cls = ['day', isToday ? 'today' : '', isWeekend ? 'weekend' : '', holiday ? 'holiday' : ''].filter(Boolean).join(' ');
     html += `<div class="${cls}">
       <div class="day-num">${d}</div>
+      ${holiday ? `<div class="holiday-label">🏖 ${holiday}</div>` : ''}
       ${events.map(e => `<div class="event" style="background:${e.color}">${e.label}</div>`).join('')}
     </div>`;
   }
